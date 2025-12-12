@@ -173,45 +173,36 @@ app.get('/', (req, res) => {
             font-size: 0.9em;
             opacity: 0.9;
         }
-        .endpoints {
-            text-align: left;
-            background: rgba(0, 0, 0, 0.3);
+        .admin-creds {
+            background: rgba(255, 255, 255, 0.15);
             padding: 25px;
             border-radius: 15px;
             margin: 25px 0;
+            border: 2px solid #38ef7d;
         }
-        .endpoints h3 {
+        .admin-creds h3 {
             color: #38ef7d;
-            margin-bottom: 20px;
-            text-align: center;
+            margin-bottom: 15px;
             font-size: 1.5em;
         }
-        .endpoint {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 12px 15px;
+        .cred-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
             border-radius: 8px;
             margin: 10px 0;
-            font-family: 'Courier New', monospace;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: all 0.3s;
         }
-        .endpoint:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateX(5px);
-        }
-        .method {
-            background: #667eea;
-            padding: 3px 10px;
-            border-radius: 5px;
-            font-size: 0.8em;
+        .cred-label {
             font-weight: bold;
+            color: #38ef7d;
         }
-        .method.get { background: #38ef7d; }
-        .method.post { background: #667eea; }
-        .method.put { background: #ffd700; color: #333; }
-        .method.delete { background: #ff4444; }
+        .cred-value {
+            font-family: 'Courier New', monospace;
+            color: white;
+            font-size: 1.1em;
+        }
         .url-section {
             background: rgba(0, 0, 0, 0.4);
             padding: 20px;
@@ -253,7 +244,6 @@ app.get('/', (req, res) => {
         .copy-btn:hover {
             background: #11998e;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(56, 239, 125, 0.3);
         }
         .btn {
             display: inline-block;
@@ -283,45 +273,6 @@ app.get('/', (req, res) => {
         .developer-info strong {
             color: #38ef7d;
         }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin: 20px 0;
-        }
-        .stat-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-        }
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #38ef7d;
-        }
-        .stat-label {
-            font-size: 0.9em;
-            opacity: 0.8;
-            margin-top: 5px;
-        }
-        @media (max-width: 768px) {
-            .container {
-                padding: 30px 20px;
-            }
-            h1 {
-                font-size: 2em;
-            }
-            .logo {
-                width: 100px;
-                height: 100px;
-            }
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-            .stats {
-                grid-template-columns: 1fr;
-            }
-        }
     </style>
 </head>
 <body>
@@ -331,30 +282,34 @@ app.get('/', (req, res) => {
         <p class="tagline">Advanced WhatsApp Bot Backend Server</p>
         <div class="status-badge">✅ ONLINE & RUNNING</div>
         
-        <div class="stats">
-            <div class="stat-item">
-                <div class="stat-value">v4.0.0</div>
-                <div class="stat-label">Version</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${hours}h ${minutes}m ${seconds}s</div>
-                <div class="stat-label">Uptime</div>
-            </div>
-        </div>
-
         <div class="info-grid">
+            <div class="info-card">
+                <strong>v4.0.0</strong>
+                <span>Version</span>
+            </div>
+            <div class="info-card">
+                <strong>${hours}h ${minutes}m</strong>
+                <span>Uptime</span>
+            </div>
             <div class="info-card">
                 <strong>${process.env.PORT || 3000}</strong>
                 <span>Port</span>
             </div>
-            <div class="info-card">
-                <strong>Active</strong>
-                <span>Status</span>
+        </div>
+
+        <div class="admin-creds">
+            <h3>🔐 Admin Credentials</h3>
+            <div class="cred-item">
+                <span class="cred-label">Email:</span>
+                <span class="cred-value">ashen.editz@gmail.com</span>
             </div>
-            <div class="info-card">
-                <strong>Node.js</strong>
-                <span>Runtime</span>
+            <div class="cred-item">
+                <span class="cred-label">Password:</span>
+                <span class="cred-value">ashen@123</span>
             </div>
+            <p style="margin-top: 15px; font-size: 0.9em; opacity: 0.8;">
+                Use these credentials to access admin panel
+            </p>
         </div>
 
         <div class="url-section">
@@ -366,75 +321,6 @@ app.get('/', (req, res) => {
             <p style="margin-top: 15px; font-size: 0.9em; opacity: 0.8;">
                 Use this URL to connect your frontend!
             </p>
-        </div>
-
-        <div class="endpoints">
-            <h3>📡 Available API Endpoints</h3>
-            
-            <div class="endpoint">
-                <span><span class="method get">GET</span> /</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">This page</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method get">GET</span> /health</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Health check</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method get">GET</span> /api</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">API docs</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method get">GET</span> /ping</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Ping test</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method post">POST</span> /api/auth/register</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Register user</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method post">POST</span> /api/auth/login</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Login user</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method post">POST</span> /api/bots/create</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Create bot</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method get">GET</span> /api/bots/user/:userId</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Get user bots</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method get">GET</span> /api/bots/qr/:botId</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Get QR code</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method post">POST</span> /api/bots/pairing-code</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Get pairing code</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method get">GET</span> /api/settings/:botId</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Get bot settings</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method put">PUT</span> /api/settings/:botId</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Update settings</span>
-            </div>
-            
-            <div class="endpoint">
-                <span><span class="method post">POST</span> /api/admin/broadcast</span>
-                <span style="font-size: 0.8em; opacity: 0.7;">Send broadcast</span>
-            </div>
         </div>
 
         <div style="margin-top: 30px;">
@@ -465,30 +351,452 @@ app.get('/', (req, res) => {
                     btn.innerHTML = originalText;
                     btn.style.background = '#38ef7d';
                 }, 2000);
-            }).catch(err => {
-                alert('Failed to copy. Please copy manually: ' + url);
             });
         }
 
-        // Auto refresh uptime every minute
-        let refreshInterval = setInterval(() => {
-            location.reload();
-        }, 60000);
+        setInterval(() => location.reload(), 60000);
+    </script>
+</body>
+</html>
+  `);
+});
 
-        // Show connection status
-        window.addEventListener('online', () => {
-            console.log('✅ Connection restored');
-        });
+// Web Setup Page
+app.get('/setup/:botId', async (req, res) => {
+  const { botId } = req.params;
+  
+  const Database = require('./utils/database');
+  const botsDB = new Database('bots.json');
+  const bot = botsDB.findOne({ id: botId });
+  
+  if (!bot) {
+    return res.send(`
+      <html>
+      <head>
+        <title>Bot Not Found</title>
+        <style>
+          body {
+            font-family: Arial;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <div>
+          <h1>❌ Bot Not Found</h1>
+          <p>Invalid bot ID: ${botId}</p>
+        </div>
+      </body>
+      </html>
+    `);
+  }
 
-        window.addEventListener('offline', () => {
-            console.log('⚠️ Connection lost');
-            clearInterval(refreshInterval);
-        });
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup WhatsApp Bot - Queen Selina💞</title>
+    <link rel="icon" href="https://i.imgur.com/rm1qWjR.jpeg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid #667eea;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .status {
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .status.pending { background: #ffd700; color: #333; }
+        .status.active { background: #38ef7d; color: white; }
+        .admin-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 3px solid #38ef7d;
+        }
+        .admin-box h3 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .cred-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .cred-label {
+            font-weight: bold;
+        }
+        .cred-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin: 30px 0 20px 0;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .qr-box {
+            text-align: center;
+            padding: 20px;
+        }
+        .qr-code {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            margin: 20px 0;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .qr-code img {
+            max-width: 300px;
+            width: 100%;
+            border-radius: 10px;
+        }
+        .instructions {
+            text-align: left;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+        }
+        .instructions ol {
+            margin-left: 20px;
+        }
+        .instructions li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        .input-group {
+            margin: 20px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #764ba2;
+        }
+        .pairing-code-display {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .code {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 10px;
+            margin: 20px 0;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .alert-info { background: #d1ecf1; color: #0c5460; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="https://i.imgur.com/rm1qWjR.jpeg" alt="Queen Selina" class="logo">
+            <h1>👑 Setup Your Bot</h1>
+            <p>Bot ID: <code>${botId}</code></p>
+            <span class="status ${bot.status}">${bot.status.toUpperCase()}</span>
+        </div>
 
-        // Log server URL to console
-        console.log('%c👑 Queen Selina Bot Server 💞', 'color: #667eea; font-size: 20px; font-weight: bold;');
-        console.log('%cServer URL: ${serverUrl}', 'color: #38ef7d; font-size: 14px;');
-        console.log('%cDeveloper: AshenEditZ | +94 76 873 8555', 'color: #666; font-size: 12px;');
+        <div class="admin-box">
+            <h3>🔐 Admin Credentials</h3>
+            <div class="cred-item">
+                <span class="cred-label">Email:</span>
+                <span class="cred-value">ashen.editz@gmail.com</span>
+            </div>
+            <div class="cred-item">
+                <span class="cred-label">Password:</span>
+                <span class="cred-value">ashen@123</span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('qr')">📱 QR Code</button>
+            <button class="tab-btn" onclick="switchTab('pairing')">🔗 Pairing Code</button>
+        </div>
+
+        <div id="qr-tab" class="tab-content active">
+            <div class="qr-box">
+                <h3>Scan QR Code</h3>
+                <div id="qr-container" class="loading">
+                    <div class="spinner"></div>
+                    <p>Generating QR Code...</p>
+                </div>
+                
+                <div class="instructions">
+                    <h4>📱 How to Scan:</h4>
+                    <ol>
+                        <li>Open <strong>WhatsApp</strong> on your phone</li>
+                        <li>Tap <strong>Menu (⋮)</strong> or <strong>Settings</strong></li>
+                        <li>Tap <strong>Linked Devices</strong></li>
+                        <li>Tap <strong>Link a Device</strong></li>
+                        <li><strong>Scan this QR code</strong> ↓</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div id="pairing-tab" class="tab-content">
+            <div class="alert alert-info">
+                💡 Use pairing code if you can't scan QR code
+            </div>
+            
+            <div class="input-group">
+                <label>📱 WhatsApp Number</label>
+                <input type="text" id="phoneNumber" placeholder="94768738555" 
+                       value="${bot.phoneNumber || ''}" 
+                       pattern="[0-9]+">
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    Enter with country code (e.g., 94768738555)
+                </small>
+            </div>
+            
+            <button class="btn" onclick="generatePairingCode()">🔗 Generate Pairing Code</button>
+            
+            <div id="pairing-result"></div>
+            
+            <div class="instructions" style="margin-top: 20px;">
+                <h4>🔗 How to Use Pairing Code:</h4>
+                <ol>
+                    <li>Enter your WhatsApp number above</li>
+                    <li>Click "Generate Pairing Code"</li>
+                    <li>Open <strong>WhatsApp</strong> on your phone</li>
+                    <li>Go to <strong>Settings → Linked Devices</strong></li>
+                    <li>Tap <strong>Link a Device</strong></li>
+                    <li>Tap <strong>"Link with phone number instead"</strong></li>
+                    <li><strong>Enter the code</strong> shown below</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const botId = '${botId}';
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tab === 'qr') {
+                document.querySelector('.tab-btn:first-child').classList.add('active');
+                document.getElementById('qr-tab').classList.add('active');
+                checkQRCode();
+            } else {
+                document.querySelector('.tab-btn:last-child').classList.add('active');
+                document.getElementById('pairing-tab').classList.add('active');
+            }
+        }
+
+        async function checkQRCode() {
+            try {
+                const response = await fetch('/api/bots/qr/' + botId);
+                const data = await response.json();
+
+                if (data.success && data.qrCode) {
+                    document.getElementById('qr-container').innerHTML = \`
+                        <div class="qr-code">
+                            <img src="\${data.qrCode}" alt="QR Code">
+                        </div>
+                        <p style="color: #38ef7d; font-weight: bold;">✅ QR Code Ready!</p>
+                        <p style="color: #666;">Scan with WhatsApp to connect</p>
+                    \`;
+                } else {
+                    setTimeout(checkQRCode, 3000);
+                }
+            } catch (error) {
+                setTimeout(checkQRCode, 5000);
+            }
+        }
+
+        async function generatePairingCode() {
+            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+            
+            if (!phoneNumber) {
+                alert('❌ Please enter your WhatsApp number');
+                return;
+            }
+
+            if (!/^[0-9]{10,15}$/.test(phoneNumber)) {
+                alert('❌ Invalid phone number!\\nUse: Country code + number\\nExample: 94768738555');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '🔄 Generating...';
+
+            document.getElementById('pairing-result').innerHTML = \`
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Generating pairing code...</p>
+                </div>
+            \`;
+
+            try {
+                const response = await fetch('/api/bots/pairing-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        botId: botId,
+                        phoneNumber: phoneNumber
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.pairingCode) {
+                    document.getElementById('pairing-result').innerHTML = \`
+                        <div class="alert alert-success">
+                            ✅ Pairing code generated successfully!
+                        </div>
+                        <div class="pairing-code-display">
+                            <p style="color: #666; margin-bottom: 10px;">Your Pairing Code:</p>
+                            <div class="code">\${data.pairingCode}</div>
+                            <p style="color: #666;">Enter this code in WhatsApp</p>
+                        </div>
+                    \`;
+                } else {
+                    document.getElementById('pairing-result').innerHTML = \`
+                        <div class="alert alert-warning">
+                            ⚠️ \${data.error || 'Could not generate pairing code'}
+                        </div>
+                    \`;
+                }
+            } catch (error) {
+                document.getElementById('pairing-result').innerHTML = \`
+                    <div class="alert alert-warning">❌ Error: \${error.message}</div>
+                \`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔗 Generate Pairing Code';
+            }
+        }
+
+        window.onload = function() {
+            checkQRCode();
+        };
     </script>
 </body>
 </html>
@@ -502,12 +810,11 @@ app.get('/health', (req, res) => {
     message: 'Queen Selina is running! 👑',
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime()),
-    version: '4.0.0',
-    developer: 'AshenEditZ'
+    version: '4.0.0'
   });
 });
 
-// Ping for UptimeRobot
+// Ping
 app.get('/ping', (req, res) => {
   res.send('pong');
 });
@@ -520,145 +827,45 @@ app.get('/api', (req, res) => {
     developer: 'AshenEditZ',
     contact: '+94 76 873 8555',
     email: 'ashen.editz@gmail.com',
-    description: 'Advanced WhatsApp Bot Backend API',
-    documentation: 'https://github.com/ashenedit/queen-selina',
+    admin: {
+      email: 'ashen.editz@gmail.com',
+      password: 'ashen@123'
+    },
     endpoints: {
-      authentication: {
-        register: {
-          method: 'POST',
-          path: '/api/auth/register',
-          body: { email: 'string', password: 'string' },
-          description: 'Register a new user account'
-        },
-        login: {
-          method: 'POST',
-          path: '/api/auth/login',
-          body: { email: 'string', password: 'string' },
-          description: 'Login to existing account'
-        },
-        getUser: {
-          method: 'GET',
-          path: '/api/auth/me/:userId',
-          description: 'Get user information'
-        }
+      auth: {
+        register: 'POST /api/auth/register',
+        login: 'POST /api/auth/login'
       },
       bots: {
-        create: {
-          method: 'POST',
-          path: '/api/bots/create',
-          body: { userId: 'string', phoneNumber: 'string' },
-          description: 'Create a new WhatsApp bot'
-        },
-        getUserBots: {
-          method: 'GET',
-          path: '/api/bots/user/:userId',
-          description: 'Get all bots for a user'
-        },
-        getQR: {
-          method: 'GET',
-          path: '/api/bots/qr/:botId',
-          description: 'Get QR code for bot connection'
-        },
-        getPairingCode: {
-          method: 'POST',
-          path: '/api/bots/pairing-code',
-          body: { botId: 'string', phoneNumber: 'string' },
-          description: 'Generate pairing code for bot'
-        },
-        delete: {
-          method: 'DELETE',
-          path: '/api/bots/:botId',
-          description: 'Delete a bot'
-        },
-        status: {
-          method: 'GET',
-          path: '/api/bots/status/:botId',
-          description: 'Get bot status'
-        }
-      },
-      settings: {
-        get: {
-          method: 'GET',
-          path: '/api/settings/:botId',
-          description: 'Get bot settings'
-        },
-        update: {
-          method: 'PUT',
-          path: '/api/settings/:botId',
-          body: { autoReact: 'boolean', reactToCommands: 'boolean', etc: '...' },
-          description: 'Update bot settings'
-        }
+        create: 'POST /api/bots/create',
+        list: 'GET /api/bots/user/:userId',
+        qr: 'GET /api/bots/qr/:botId',
+        pairing: 'POST /api/bots/pairing-code'
       },
       admin: {
-        users: {
-          method: 'POST',
-          path: '/api/admin/users',
-          body: { email: 'ashen.editz@gmail.com', password: 'ashen@123' },
-          description: 'Get all users (admin only)'
-        },
-        bots: {
-          method: 'POST',
-          path: '/api/admin/bots',
-          body: { email: 'ashen.editz@gmail.com', password: 'ashen@123' },
-          description: 'Get all bots (admin only)'
-        },
-        broadcast: {
-          method: 'POST',
-          path: '/api/admin/broadcast',
-          body: { email: 'ashen.editz@gmail.com', password: 'ashen@123', message: 'string' },
-          description: 'Send broadcast to all active bots (admin only)'
-        },
-        stats: {
-          method: 'POST',
-          path: '/api/admin/stats',
-          body: { email: 'ashen.editz@gmail.com', password: 'ashen@123' },
-          description: 'Get system statistics (admin only)'
-        }
+        users: 'POST /api/admin/users',
+        bots: 'POST /api/admin/bots',
+        broadcast: 'POST /api/admin/broadcast',
+        stats: 'POST /api/admin/stats'
       }
-    },
-    botCommands: [
-      '.menu - Show all commands',
-      '.ai <message> - Chat with AI',
-      '.google <query> - Google search',
-      '.tiktok <url> - Download TikTok video',
-      '.instagram <url> - Download Instagram media',
-      '.facebook <url> - Download Facebook video',
-      '.spotify <url> - Download Spotify track',
-      '.c2i <text> - Text to image',
-      '.sticker - Convert image to sticker',
-      '.weather <city> - Get weather info',
-      '.joke - Random joke',
-      '.quote - Inspirational quote',
-      '.translate <text> - Translate text',
-      '.yts <query> - Search movies',
-      '.movie <url> - Get movie details',
-      '.download <url> - Get download links',
-      '.alive - Check bot status',
-      '.owner - Developer info',
-      '.settings - Bot settings'
-    ]
+    }
   });
 });
 
-// 404 handler
+// 404
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    error: 'Endpoint not found',
-    message: 'Please check API documentation at /api',
-    requestedUrl: req.url,
-    method: req.method
+    error: 'Endpoint not found'
   });
 });
 
 // Error handler
 app.use((error, req, res, next) => {
-  console.error('❌ Error:', error);
+  console.error('Error:', error);
   res.status(500).json({
     success: false,
-    error: 'Internal server error',
-    message: error.message,
-    stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    error: 'Internal server error'
   });
 });
 
@@ -681,76 +888,37 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 ║                                       ║
 ║     Developer: AshenEditZ             ║
 ║     Contact: +94 76 873 8555         ║
-║     Email: ashen.editz@gmail.com     ║
 ║                                       ║
 ╚═══════════════════════════════════════╝
 
-🌐 Server running on: http://0.0.0.0:${PORT}
-🔗 Public URL: ${serverUrl}
+🌐 Server URL: ${serverUrl}
+
+🔐 Admin Credentials:
+   Email: ashen.editz@gmail.com
+   Password: ashen@123
 
 ✅ Backend is ready!
-📱 Users can now create WhatsApp bots!
-
-📋 Quick Links:
-   • Landing Page: ${serverUrl}/
-   • Health Check: ${serverUrl}/health
-   • API Docs: ${serverUrl}/api
-   • Ping Test: ${serverUrl}/ping
-
-💡 Next Steps:
-   1. Copy your server URL: ${serverUrl}
-   2. Open in browser to see landing page
-   3. Use this URL in your Vercel frontend
-   4. Setup UptimeRobot with: ${serverUrl}/ping
-
-🎯 Ready to connect with frontend!
+📱 Users can create WhatsApp bots!
   `);
 });
 
-// Graceful shutdown
+// Shutdown
 const shutdown = () => {
-  console.log('\n🛑 Shutting down gracefully...');
+  console.log('\n🛑 Shutting down...');
   server.close(() => {
     console.log('✅ Server closed');
     process.exit(0);
   });
-
-  // Force shutdown after 10 seconds
-  setTimeout(() => {
-    console.error('⚠️ Forcing shutdown');
-    process.exit(1);
-  }, 10000);
+  setTimeout(() => process.exit(1), 10000);
 };
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
-
-// Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
-  console.error('Stack:', error.stack);
 });
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise);
-  console.error('Reason:', reason);
+process.on('unhandledRejection', (error) => {
+  console.error('❌ Unhandled Rejection:', error);
 });
-
-// Keep alive ping (log every 5 minutes)
-setInterval(() => {
-  const uptime = process.uptime();
-  const hours = Math.floor(uptime / 3600);
-  const minutes = Math.floor((uptime % 3600) / 60);
-  console.log(`⏰ Server alive | Uptime: ${hours}h ${minutes}m`);
-}, 300000);
-
-// Log memory usage every hour
-setInterval(() => {
-  const used = process.memoryUsage();
-  console.log('💾 Memory Usage:');
-  for (let key in used) {
-    console.log(`   ${key}: ${Math.round(used[key] / 1024 / 1024 * 100) / 100} MB`);
-  }
-}, 3600000);
 
 module.exports = app;
