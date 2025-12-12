@@ -8,7 +8,7 @@ const usersDB = new Database('users.json');
 const botsDB = new Database('bots.json');
 const botManager = new BotManager();
 
-// Create new bot
+// Create new bot - NO ADMIN INFO in response
 router.post('/create', async (req, res) => {
   try {
     const { userId, phoneNumber } = req.body;
@@ -61,12 +61,11 @@ router.post('/create', async (req, res) => {
 
     console.log(`✅ Bot created: ${phoneNumber} for user ${user.email}`);
 
-    // Create bot in background
     botManager.createBot(newBot.id, phoneNumber).catch(err => {
       console.error('Bot creation error:', err);
     });
 
-    // Generate setup URL
+    // Setup URL (admin only - users won't see this)
     const setupUrl = process.env.REPL_SLUG 
       ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/setup/${newBot.id}`
       : `http://localhost:${process.env.PORT || 3000}/setup/${newBot.id}`;
@@ -75,13 +74,9 @@ router.post('/create', async (req, res) => {
       success: true,
       bot: newBot,
       setupUrl: setupUrl,
-      adminCredentials: {
-        email: 'ashen.editz@gmail.com',
-        password: 'ashen@123'
-      },
       message: isFree 
-        ? '🎉 Free bot created! Open setup URL to connect.' 
-        : 'Bot created successfully! Open setup URL to connect.'
+        ? '🎉 Free bot created! Contact admin for setup access.' 
+        : 'Bot created successfully! Contact admin for setup access.'
     });
   } catch (error) {
     console.error('Create bot error:', error);
@@ -96,16 +91,9 @@ router.post('/create', async (req, res) => {
 router.get('/user/:userId', (req, res) => {
   try {
     const bots = botsDB.find({ userId: req.params.userId });
-    res.json({ 
-      success: true, 
-      bots 
-    });
+    res.json({ success: true, bots });
   } catch (error) {
-    console.error('Get bots error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -114,22 +102,12 @@ router.get('/qr/:botId', (req, res) => {
   try {
     const qrCode = botManager.getQR(req.params.botId);
     if (qrCode) {
-      res.json({ 
-        success: true, 
-        qrCode 
-      });
+      res.json({ success: true, qrCode });
     } else {
-      res.json({ 
-        success: false, 
-        error: 'QR code not ready yet. Please wait...' 
-      });
+      res.json({ success: false, error: 'QR code not ready yet' });
     }
   } catch (error) {
-    console.error('Get QR error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -145,58 +123,40 @@ router.post('/pairing-code', async (req, res) => {
       });
     }
 
-    // Validate phone number
     if (!/^[0-9]{10,15}$/.test(phoneNumber)) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Invalid phone number format. Use country code + number (e.g., 94768738555)' 
+        error: 'Invalid phone number format' 
       });
     }
-
-    console.log(`🔗 Requesting pairing code for bot ${botId}, number ${phoneNumber}`);
 
     const code = await botManager.getPairingCode(botId, phoneNumber);
     
     if (code) {
-      console.log(`✅ Pairing code generated: ${code}`);
-      res.json({ 
-        success: true, 
-        pairingCode: code,
-        message: 'Pairing code generated successfully'
-      });
+      res.json({ success: true, pairingCode: code });
     } else {
-      console.log(`❌ Failed to generate pairing code for bot ${botId}`);
       res.status(400).json({ 
         success: false, 
-        error: 'Could not generate pairing code. Please ensure bot is initializing and try again in a few seconds.' 
+        error: 'Could not generate pairing code. Please wait and try again.' 
       });
     }
   } catch (error) {
-    console.error('Pairing code error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // Delete bot
 router.delete('/:botId', async (req, res) => {
   try {
-    const botId = req.params.botId;
-    const bot = botsDB.findOne({ id: botId });
+    const bot = botsDB.findOne({ id: req.params.botId });
     
     if (!bot) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Bot not found' 
-      });
+      return res.status(404).json({ success: false, error: 'Bot not found' });
     }
 
-    await botManager.stopBot(botId);
-    botsDB.delete({ id: botId });
+    await botManager.stopBot(req.params.botId);
+    botsDB.delete({ id: req.params.botId });
     
-    // Update user's total bots
     const user = usersDB.findOne({ id: bot.userId });
     if (user) {
       usersDB.update(
@@ -205,18 +165,9 @@ router.delete('/:botId', async (req, res) => {
       );
     }
 
-    console.log(`🗑️ Bot deleted: ${botId}`);
-    
-    res.json({ 
-      success: true, 
-      message: 'Bot deleted successfully' 
-    });
+    res.json({ success: true, message: 'Bot deleted successfully' });
   } catch (error) {
-    console.error('Delete bot error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -226,51 +177,9 @@ router.get('/status/:botId', (req, res) => {
     const status = botManager.getStatus(req.params.botId);
     const bot = botsDB.findOne({ id: req.params.botId });
     
-    res.json({ 
-      success: true, 
-      status,
-      bot: bot || null
-    });
+    res.json({ success: true, status, bot });
   } catch (error) {
-    console.error('Get status error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
-  }
-});
-
-// Get bot setup info
-router.get('/setup-info/:botId', (req, res) => {
-  try {
-    const bot = botsDB.findOne({ id: req.params.botId });
-    
-    if (!bot) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Bot not found' 
-      });
-    }
-
-    const setupUrl = process.env.REPL_SLUG 
-      ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/setup/${bot.id}`
-      : `http://localhost:${process.env.PORT || 3000}/setup/${bot.id}`;
-
-    res.json({
-      success: true,
-      bot,
-      setupUrl,
-      adminCredentials: {
-        email: 'ashen.editz@gmail.com',
-        password: 'ashen@123'
-      }
-    });
-  } catch (error) {
-    console.error('Get setup info error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
