@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup - Queen Selina💞</title>
+    <link rel="icon" href="https://i.imgur.com/rm1qWjR.jpeg" type="image/jpeg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .setup-container {
+            background: white;
+            padding: 50px;
+            border-radius: 20px;
+            max-width: 700px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .setup-container h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .setup-container h1 img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+        }
+
+        .step {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+        }
+
+        .step h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .step p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 10px;
+        }
+
+        .step code {
+            background: #e9ecef;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+            font-weight: bold;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.1em;
+        }
+
+        .loading:after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+
+        .copy-btn {
+            background: #38ef7d;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        .copy-btn:hover {
+            background: #11998e;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <h1>
+            <img src="https://i.imgur.com/rm1qWjR.jpeg" alt="Queen Selina">
+            Quick Setup
+        </h1>
+        
+        <div class="step">
+            <h3>📝 Step 1: Create Replit Account</h3>
+            <p>1. Visit <code>replit.com</code></p>
+            <p>2. Click <strong>"Sign up"</strong> (100% FREE)</p>
+            <p>3. Verify your email</p>
+        </div>
+
+        <div class="step">
+            <h3>➕ Step 2: Create New Repl</h3>
+            <p>1. Click <code>+ Create Repl</code></p>
+            <p>2. Select <code>Node.js</code> template</p>
+            <p>3. Name it: <code>queen-selina-bot</code></p>
+            <p>4. Click <strong>"Create Repl"</strong></p>
+        </div>
+
+        <div class="step">
+            <h3>📤 Step 3: Upload Bot Files</h3>
+            <p>1. Upload all bot files from GitHub or copy code</p>
+            <p>2. Make sure all files are in correct folders</p>
+            <p>3. Click <code>Run</code> button at top</p>
+            <p>4. Wait for "Queen Selina is running!" message</p>
+        </div>
+
+        <div class="step">
+            <h3>🔗 Step 4: Connect Your Replit</h3>
+            <p>Enter your Replit URL below (found at top of Replit window):</p>
+            
+            <div class="input-group">
+                <label>🌐 Replit URL</label>
+                <input type="url" id="replitUrl" placeholder="https://queen-selina-bot.username.repl.co">
+            </div>
+
+            <button class="btn" onclick="testConnection()">✅ Test & Save Connection</button>
+        </div>
+
+        <div id="statusMessage"></div>
+
+        <div class="step highlight">
+            <h3>⏰ Step 5: 24/7 Uptime (UptimeRobot)</h3>
+            <p>1. Go to <code>uptimerobot.com</code> <button class="copy-btn" onclick="window.open('https://uptimerobot.com', '_blank')">Visit</button></p>
+            <p>2. Sign up FREE</p>
+            <p>3. Click <code>+ Add New Monitor</code></p>
+            <p>4. Monitor Type: <code>HTTP(s)</code></p>
+            <p>5. Friendly Name: <code>Queen Selina Bot</code></p>
+            <p>6. URL: <code id="pingUrl">Your URL + /ping</code> <button class="copy-btn" onclick="copyPingUrl()">Copy</button></p>
+            <p>7. Monitoring Interval: <code>5 minutes</code></p>
+            <p>8. Click <code>Create Monitor</code></p>
+            <p><strong>✅ Done! Your bot runs 24/7 FREE!</strong></p>
+        </div>
+
+        <a href="/" class="back-link">← Back to Home</a>
+    </div>
+
+    <script>
+        async function testConnection() {
+            const urlInput = document.getElementById('replitUrl');
+            const url = urlInput.value.trim();
+            const statusDiv = document.getElementById('statusMessage');
+            const btn = event.target;
+
+            if (!url) {
+                statusDiv.innerHTML = '<div class="status error">⚠️ Please enter your Replit URL</div>';
+                return;
+            }
+
+            try {
+                new URL(url);
+            } catch (e) {
+                statusDiv.innerHTML = '<div class="status error">❌ Invalid URL format. Please check and try again.</div>';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+            statusDiv.innerHTML = '<div class="status info"><div class="loading">🔄 Testing connection to server</div></div>';
+
+            try {
+                const response = await fetch(url + '/health', {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    localStorage.setItem('replitUrl', url);
+                    
+                    const pingUrl = url + '/ping';
+                    document.getElementById('pingUrl').textContent = pingUrl;
+                    
+                    statusDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ Connection successful!<br><br>
+                            <strong>Server:</strong> ${data.message}<br>
+                            <strong>Status:</strong> ${data.status}<br>
+                            <strong>Uptime:</strong> ${Math.floor(data.uptime)}s<br><br>
+                            🎉 Redirecting to dashboard...
+                        </div>
+                    `;
+
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 2000);
+                } else {
+                    throw new Error('Server not responding properly');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Connection failed<br><br>
+                        <strong>Error:</strong> ${error.message}<br><br>
+                        <strong>Troubleshooting:</strong><br>
+                        • Make sure your Repl is running (green dot)<br>
+                        • Check if URL is correct<br>
+                        • Ensure Repl is public<br>
+                        • Wait 30 seconds and try again
+                    </div>
+                `;
+                btn.disabled = false;
+                btn.textContent = '🔄 Try Again';
+            }
+        }
+
+        function copyPingUrl() {
+            const pingUrl = document.getElementById('pingUrl').textContent;
+            navigator.clipboard.writeText(pingUrl);
+            event.target.textContent = '✅ Copied!';
+            setTimeout(() => {
+                event.target.textContent = 'Copy';
+            }, 2000);
+        }
+
+        window.onload = function() {
+            const savedUrl = localStorage.getItem('replitUrl');
+            if (savedUrl) {
+                document.getElementById('replitUrl').value = savedUrl;
+                document.getElementById('pingUrl').textContent = savedUrl + '/ping';
+            }
+        };
+
+        document.getElementById('replitUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                testConnection();
+            }
+        });
+    </script>
+</body>
+</html>
