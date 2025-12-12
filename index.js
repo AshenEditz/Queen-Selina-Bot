@@ -22,6 +22,9 @@ app.use(cors({
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
+// Session management (simple in-memory store)
+const adminSessions = new Map();
+
 // Initialize directories
 const initDirectories = () => {
   const dirs = ['sessions', 'data', 'routes', 'utils'];
@@ -34,7 +37,6 @@ const initDirectories = () => {
     }
   });
 
-  // Initialize database files
   const dbFiles = {
     'data/users.json': [{
       id: 'admin-001',
@@ -59,7 +61,6 @@ const initDirectories = () => {
   });
 };
 
-// Initialize
 initDirectories();
 
 // Routes
@@ -68,16 +69,53 @@ app.use('/api/bots', botRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 
-// Root endpoint - Beautiful Landing Page
+// Admin login endpoint for setup page
+app.post('/admin/login', (req, res) => {
+  const { email, password } = req.body;
+  
+  if (email === 'ashen.editz@gmail.com' && password === 'ashen@123') {
+    const sessionId = require('crypto').randomBytes(32).toString('hex');
+    adminSessions.set(sessionId, {
+      email: email,
+      loginTime: new Date().toISOString()
+    });
+    
+    res.json({
+      success: true,
+      sessionId: sessionId,
+      message: 'Admin login successful'
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      error: 'Invalid admin credentials'
+    });
+  }
+});
+
+// Check admin session
+app.post('/admin/check-session', (req, res) => {
+  const { sessionId } = req.body;
+  
+  if (adminSessions.has(sessionId)) {
+    res.json({ success: true, isAdmin: true });
+  } else {
+    res.json({ success: false, isAdmin: false });
+  }
+});
+
+// Admin logout
+app.post('/admin/logout', (req, res) => {
+  const { sessionId } = req.body;
+  adminSessions.delete(sessionId);
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// Root endpoint - Public Landing Page (NO ADMIN INFO)
 app.get('/', (req, res) => {
   const uptime = process.uptime();
   const hours = Math.floor(uptime / 3600);
   const minutes = Math.floor((uptime % 3600) / 60);
-  const seconds = Math.floor(uptime % 60);
-
-  const serverUrl = process.env.REPL_SLUG 
-    ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-    : `http://localhost:${process.env.PORT || 3000}`;
 
   res.send(`
 <!DOCTYPE html>
@@ -85,8 +123,8 @@ app.get('/', (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>👑 Queen Selina Bot 💞 - Backend Server</title>
-    <link rel="icon" href="https://i.imgur.com/rm1qWjR.jpeg" type="image/jpeg">
+    <title>👑 Queen Selina Bot 💞</title>
+    <link rel="icon" href="https://i.imgur.com/rm1qWjR.jpeg">
     <style>
         * {
             margin: 0;
@@ -110,7 +148,7 @@ app.get('/', (req, res) => {
             padding: 50px;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 700px;
+            max-width: 600px;
             width: 100%;
         }
         .logo {
@@ -119,7 +157,6 @@ app.get('/', (req, res) => {
             border-radius: 50%;
             border: 5px solid white;
             margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             animation: float 3s ease-in-out infinite;
         }
         @keyframes float {
@@ -128,13 +165,7 @@ app.get('/', (req, res) => {
         }
         h1 {
             font-size: 3em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .tagline {
-            font-size: 1.2em;
-            opacity: 0.9;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         .status-badge {
             background: #38ef7d;
@@ -146,104 +177,16 @@ app.get('/', (req, res) => {
             display: inline-block;
             margin: 20px 0;
             box-shadow: 0 5px 20px rgba(56, 239, 125, 0.5);
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin: 30px 0;
         }
         .info-card {
             background: rgba(255, 255, 255, 0.15);
-            padding: 20px;
-            border-radius: 10px;
-        }
-        .info-card strong {
-            display: block;
-            color: #38ef7d;
-            font-size: 1.8em;
-            margin-bottom: 5px;
-        }
-        .info-card span {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-        .admin-creds {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 25px;
+            padding: 30px;
             border-radius: 15px;
-            margin: 25px 0;
-            border: 2px solid #38ef7d;
+            margin: 30px 0;
         }
-        .admin-creds h3 {
+        .info-card h3 {
             color: #38ef7d;
             margin-bottom: 15px;
-            font-size: 1.5em;
-        }
-        .cred-item {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 15px;
-            border-radius: 8px;
-            margin: 10px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .cred-label {
-            font-weight: bold;
-            color: #38ef7d;
-        }
-        .cred-value {
-            font-family: 'Courier New', monospace;
-            color: white;
-            font-size: 1.1em;
-        }
-        .url-section {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 20px;
-            border-radius: 15px;
-            margin: 25px 0;
-        }
-        .url-section h3 {
-            color: #38ef7d;
-            margin-bottom: 15px;
-            font-size: 1.3em;
-        }
-        .url-display {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            word-break: break-all;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .url-text {
-            flex: 1;
-            color: white;
-            font-family: 'Courier New', monospace;
-            font-size: 1.1em;
-        }
-        .copy-btn {
-            background: #38ef7d;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-            font-size: 0.9em;
-        }
-        .copy-btn:hover {
-            background: #11998e;
-            transform: translateY(-2px);
         }
         .btn {
             display: inline-block;
@@ -255,7 +198,6 @@ app.get('/', (req, res) => {
             font-weight: bold;
             margin: 10px;
             transition: all 0.3s;
-            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
         }
         .btn:hover {
             transform: translateY(-3px);
@@ -266,102 +208,324 @@ app.get('/', (req, res) => {
             padding-top: 25px;
             border-top: 2px solid rgba(255, 255, 255, 0.2);
         }
-        .developer-info p {
-            margin: 10px 0;
-            font-size: 1.1em;
-        }
-        .developer-info strong {
-            color: #38ef7d;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <img src="https://i.imgur.com/rm1qWjR.jpeg" alt="Queen Selina" class="logo">
         <h1>👑 Queen Selina Bot 💞</h1>
-        <p class="tagline">Advanced WhatsApp Bot Backend Server</p>
-        <div class="status-badge">✅ ONLINE & RUNNING</div>
+        <p style="font-size: 1.2em; margin-bottom: 20px;">Advanced WhatsApp Bot Platform</p>
+        <div class="status-badge">✅ ONLINE</div>
         
-        <div class="info-grid">
-            <div class="info-card">
-                <strong>v4.0.0</strong>
-                <span>Version</span>
-            </div>
-            <div class="info-card">
-                <strong>${hours}h ${minutes}m</strong>
-                <span>Uptime</span>
-            </div>
-            <div class="info-card">
-                <strong>${process.env.PORT || 3000}</strong>
-                <span>Port</span>
-            </div>
-        </div>
-
-        <div class="admin-creds">
-            <h3>🔐 Admin Credentials</h3>
-            <div class="cred-item">
-                <span class="cred-label">Email:</span>
-                <span class="cred-value">ashen.editz@gmail.com</span>
-            </div>
-            <div class="cred-item">
-                <span class="cred-label">Password:</span>
-                <span class="cred-value">ashen@123</span>
-            </div>
-            <p style="margin-top: 15px; font-size: 0.9em; opacity: 0.8;">
-                Use these credentials to access admin panel
-            </p>
-        </div>
-
-        <div class="url-section">
-            <h3>🔗 Your Server URL</h3>
-            <div class="url-display">
-                <div class="url-text" id="serverUrl">${serverUrl}</div>
-                <button class="copy-btn" onclick="copyUrl()">📋 Copy</button>
-            </div>
-            <p style="margin-top: 15px; font-size: 0.9em; opacity: 0.8;">
-                Use this URL to connect your frontend!
-            </p>
+        <div class="info-card">
+            <h3>✨ Free WhatsApp Bot Service</h3>
+            <p>Create and manage your own WhatsApp bots</p>
+            <p>24/7 uptime • 50+ commands • 100% Free</p>
         </div>
 
         <div style="margin-top: 30px;">
-            <a href="/api" class="btn">📖 API Docs</a>
             <a href="/health" class="btn">🏥 Health Check</a>
+            <a href="/admin-access" class="btn">🔐 Admin Access</a>
         </div>
 
         <div class="developer-info">
-            <h3 style="color: #38ef7d; margin-bottom: 15px;">👨‍💻 Developer Information</h3>
-            <p><strong>Developer:</strong> AshenEditZ</p>
+            <p style="font-size: 1.1em;"><strong>Developer:</strong> AshenEditZ</p>
             <p><strong>Contact:</strong> +94 76 873 8555</p>
-            <p><strong>Email:</strong> ashen.editz@gmail.com</p>
-            <p style="margin-top: 20px; opacity: 0.7; font-size: 0.9em;">
-                💞 Made with ❤️ in Sri Lanka 🇱🇰
-            </p>
+            <p style="margin-top: 10px; opacity: 0.7;">💞 Made with ❤️ in Sri Lanka 🇱🇰</p>
+        </div>
+    </div>
+</body>
+</html>
+  `);
+});
+
+// Admin Access Page
+app.get('/admin-access', (req, res) => {
+  const serverUrl = process.env.REPL_SLUG 
+    ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+    : `http://localhost:${process.env.PORT || 3000}`;
+
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Admin Access - Queen Selina</title>
+    <link rel="icon" href="https://i.imgur.com/rm1qWjR.jpeg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid #667eea;
+            display: block;
+            margin: 0 auto 20px;
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #764ba2;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        .admin-panel {
+            display: none;
+        }
+        .admin-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .cred-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .cred-value {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        .copy-btn {
+            background: #38ef7d;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="https://i.imgur.com/rm1qWjR.jpeg" alt="Queen Selina" class="logo">
+        
+        <div id="loginForm">
+            <h1>🔐 Admin Login</h1>
+            <div id="alertBox" class="alert alert-error"></div>
+            
+            <div class="input-group">
+                <label>📧 Email</label>
+                <input type="email" id="email" placeholder="Enter admin email">
+            </div>
+            
+            <div class="input-group">
+                <label>🔒 Password</label>
+                <input type="password" id="password" placeholder="Enter admin password">
+            </div>
+            
+            <button class="btn" onclick="adminLogin()">Login</button>
+            <a href="/" class="back-link">← Back to Home</a>
+        </div>
+
+        <div id="adminPanel" class="admin-panel">
+            <h1>👑 Admin Dashboard</h1>
+            
+            <div class="admin-box">
+                <h3>🔐 Admin Credentials</h3>
+                <div class="cred-item">
+                    <span>Email:</span>
+                    <span class="cred-value">ashen.editz@gmail.com</span>
+                </div>
+                <div class="cred-item">
+                    <span>Password:</span>
+                    <span class="cred-value">ashen@123</span>
+                </div>
+            </div>
+
+            <div class="admin-box">
+                <h3>🌐 Server Information</h3>
+                <div class="cred-item">
+                    <span>Server URL:</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-top: 10px; word-break: break-all;">
+                    <code style="color: white;">${serverUrl}</code>
+                    <button class="copy-btn" onclick="copyUrl('${serverUrl}')">📋 Copy</button>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <a href="/health" class="btn" style="text-decoration: none; display: inline-block;">🏥 Health Check</a>
+                <button class="btn" onclick="logout()" style="background: #ff4444; margin-top: 10px;">🚪 Logout</button>
+            </div>
         </div>
     </div>
 
     <script>
-        function copyUrl() {
-            const url = document.getElementById('serverUrl').textContent;
+        let sessionId = localStorage.getItem('adminSessionId');
+
+        async function checkSession() {
+            if (sessionId) {
+                try {
+                    const response = await fetch('/admin/check-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId })
+                    });
+                    const data = await response.json();
+                    if (data.success && data.isAdmin) {
+                        showAdminPanel();
+                    }
+                } catch (error) {
+                    console.error('Session check failed:', error);
+                }
+            }
+        }
+
+        async function adminLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const alertBox = document.getElementById('alertBox');
+
+            if (!email || !password) {
+                alertBox.textContent = '⚠️ Please enter email and password';
+                alertBox.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    sessionId = data.sessionId;
+                    localStorage.setItem('adminSessionId', sessionId);
+                    showAdminPanel();
+                } else {
+                    alertBox.textContent = '❌ Invalid admin credentials';
+                    alertBox.style.display = 'block';
+                }
+            } catch (error) {
+                alertBox.textContent = '❌ Login failed: ' + error.message;
+                alertBox.style.display = 'block';
+            }
+        }
+
+        function showAdminPanel() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+        }
+
+        async function logout() {
+            try {
+                await fetch('/admin/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId })
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            localStorage.removeItem('adminSessionId');
+            location.reload();
+        }
+
+        function copyUrl(url) {
             navigator.clipboard.writeText(url).then(() => {
-                const btn = event.target;
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '✅ Copied!';
-                btn.style.background = '#11998e';
+                event.target.textContent = '✅ Copied!';
                 setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.style.background = '#38ef7d';
+                    event.target.textContent = '📋 Copy';
                 }, 2000);
             });
         }
 
-        setInterval(() => location.reload(), 60000);
+        window.onload = checkSession;
+
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') adminLogin();
+        });
     </script>
 </body>
 </html>
   `);
 });
 
-// Web Setup Page
+// Protected Setup Page (Admin Only)
 app.get('/setup/:botId', async (req, res) => {
   const { botId } = req.params;
   
@@ -403,7 +567,7 @@ app.get('/setup/:botId', async (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Setup WhatsApp Bot - Queen Selina💞</title>
+    <title>🔐 Admin Setup - Queen Selina</title>
     <link rel="icon" href="https://i.imgur.com/rm1qWjR.jpeg">
     <style>
         * {
@@ -416,131 +580,50 @@ app.get('/setup/:botId', async (req, res) => {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
+        }
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
             display: flex;
             justify-content: center;
             align-items: center;
+            z-index: 9999;
+        }
+        .auth-box {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 100%;
         }
         .container {
+            display: none;
             background: white;
             padding: 40px;
             border-radius: 20px;
             max-width: 600px;
-            width: 100%;
+            margin: 0 auto;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
         }
         .logo {
             width: 100px;
             height: 100px;
             border-radius: 50%;
             border: 4px solid #667eea;
+            display: block;
+            margin: 0 auto 20px;
+        }
+        h1, h2 {
+            color: #667eea;
+            text-align: center;
             margin-bottom: 20px;
         }
-        h1 {
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-        .status {
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: bold;
-            display: inline-block;
-            margin: 10px 0;
-        }
-        .status.pending { background: #ffd700; color: #333; }
-        .status.active { background: #38ef7d; color: white; }
-        .admin-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin: 20px 0;
-            border: 3px solid #38ef7d;
-        }
-        .admin-box h3 {
-            margin-bottom: 15px;
-            font-size: 1.3em;
-        }
-        .cred-item {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 12px;
-            border-radius: 8px;
-            margin: 10px 0;
-            display: flex;
-            justify-content: space-between;
-        }
-        .cred-label {
-            font-weight: bold;
-        }
-        .cred-value {
-            font-family: 'Courier New', monospace;
-            font-size: 1.1em;
-        }
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin: 30px 0 20px 0;
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 15px;
-            background: #f0f0f0;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-        }
-        .tab-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-        .tab-content {
-            display: none;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        .qr-box {
-            text-align: center;
-            padding: 20px;
-        }
-        .qr-code {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            display: inline-block;
-            margin: 20px 0;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        }
-        .qr-code img {
-            max-width: 300px;
-            width: 100%;
-            border-radius: 10px;
-        }
-        .instructions {
-            text-align: left;
-            margin: 20px 0;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-        }
-        .instructions ol {
-            margin-left: 20px;
-        }
-        .instructions li {
-            margin: 10px 0;
-            line-height: 1.6;
-        }
         .input-group {
-            margin: 20px 0;
+            margin-bottom: 20px;
         }
         .input-group label {
             display: block;
@@ -570,12 +653,61 @@ app.get('/setup/:botId', async (req, res) => {
         .btn:hover {
             background: #764ba2;
         }
-        .pairing-code-display {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
             margin: 20px 0;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .qr-code {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .qr-code img {
+            max-width: 300px;
+            width: 100%;
         }
         .code {
             font-size: 3em;
@@ -601,36 +733,49 @@ app.get('/setup/:botId', async (req, res) => {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .alert {
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
+        .instructions {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
         }
-        .alert-info { background: #d1ecf1; color: #0c5460; }
-        .alert-success { background: #d4edda; color: #155724; }
-        .alert-warning { background: #fff3cd; color: #856404; }
+        .instructions ol {
+            margin-left: 20px;
+        }
+        .instructions li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
+    <div id="authOverlay" class="auth-overlay">
+        <div class="auth-box">
             <img src="https://i.imgur.com/rm1qWjR.jpeg" alt="Queen Selina" class="logo">
-            <h1>👑 Setup Your Bot</h1>
-            <p>Bot ID: <code>${botId}</code></p>
-            <span class="status ${bot.status}">${bot.status.toUpperCase()}</span>
+            <h2>🔐 Admin Login Required</h2>
+            <p style="text-align: center; color: #666; margin-bottom: 20px;">
+                This page is restricted to admins only
+            </p>
+            <div id="authAlert" class="alert alert-error" style="display: none;"></div>
+            
+            <div class="input-group">
+                <label>📧 Email</label>
+                <input type="email" id="adminEmail" placeholder="Enter admin email">
+            </div>
+            
+            <div class="input-group">
+                <label>🔒 Password</label>
+                <input type="password" id="adminPassword" placeholder="Enter admin password">
+            </div>
+            
+            <button class="btn" onclick="verifyAdmin()">🔓 Unlock Setup Page</button>
         </div>
+    </div>
 
-        <div class="admin-box">
-            <h3>🔐 Admin Credentials</h3>
-            <div class="cred-item">
-                <span class="cred-label">Email:</span>
-                <span class="cred-value">ashen.editz@gmail.com</span>
-            </div>
-            <div class="cred-item">
-                <span class="cred-label">Password:</span>
-                <span class="cred-value">ashen@123</span>
-            </div>
-        </div>
+    <div class="container" id="setupContainer">
+        <img src="https://i.imgur.com/rm1qWjR.jpeg" alt="Queen Selina" class="logo">
+        <h1>👑 Setup Your Bot</h1>
+        <p style="text-align: center; margin-bottom: 20px;">Bot ID: <code>${botId}</code></p>
 
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('qr')">📱 QR Code</button>
@@ -638,23 +783,20 @@ app.get('/setup/:botId', async (req, res) => {
         </div>
 
         <div id="qr-tab" class="tab-content active">
-            <div class="qr-box">
-                <h3>Scan QR Code</h3>
-                <div id="qr-container" class="loading">
-                    <div class="spinner"></div>
-                    <p>Generating QR Code...</p>
-                </div>
-                
-                <div class="instructions">
-                    <h4>📱 How to Scan:</h4>
-                    <ol>
-                        <li>Open <strong>WhatsApp</strong> on your phone</li>
-                        <li>Tap <strong>Menu (⋮)</strong> or <strong>Settings</strong></li>
-                        <li>Tap <strong>Linked Devices</strong></li>
-                        <li>Tap <strong>Link a Device</strong></li>
-                        <li><strong>Scan this QR code</strong> ↓</li>
-                    </ol>
-                </div>
+            <div id="qr-container" class="loading">
+                <div class="spinner"></div>
+                <p>Generating QR Code...</p>
+            </div>
+            
+            <div class="instructions">
+                <h4>📱 How to Scan QR Code:</h4>
+                <ol>
+                    <li>Open <strong>WhatsApp</strong> on your phone</li>
+                    <li>Tap <strong>Menu (⋮)</strong> or <strong>Settings</strong></li>
+                    <li>Tap <strong>Linked Devices</strong></li>
+                    <li>Tap <strong>Link a Device</strong></li>
+                    <li><strong>Scan the QR code</strong> above</li>
+                </ol>
             </div>
         </div>
 
@@ -677,7 +819,7 @@ app.get('/setup/:botId', async (req, res) => {
             
             <div id="pairing-result"></div>
             
-            <div class="instructions" style="margin-top: 20px;">
+            <div class="instructions">
                 <h4>🔗 How to Use Pairing Code:</h4>
                 <ol>
                     <li>Enter your WhatsApp number above</li>
@@ -694,6 +836,63 @@ app.get('/setup/:botId', async (req, res) => {
 
     <script>
         const botId = '${botId}';
+        let adminSessionId = localStorage.getItem('adminSessionId');
+
+        async function verifyAdmin() {
+            const email = document.getElementById('adminEmail').value;
+            const password = document.getElementById('adminPassword').value;
+            const alertBox = document.getElementById('authAlert');
+
+            if (!email || !password) {
+                alertBox.textContent = '⚠️ Please enter email and password';
+                alertBox.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    adminSessionId = data.sessionId;
+                    localStorage.setItem('adminSessionId', adminSessionId);
+                    document.getElementById('authOverlay').style.display = 'none';
+                    document.getElementById('setupContainer').style.display = 'block';
+                    checkQRCode();
+                } else {
+                    alertBox.textContent = '❌ Invalid admin credentials';
+                    alertBox.style.display = 'block';
+                }
+            } catch (error) {
+                alertBox.textContent = '❌ Login failed: ' + error.message;
+                alertBox.style.display = 'block';
+            }
+        }
+
+        async function checkSession() {
+            if (adminSessionId) {
+                try {
+                    const response = await fetch('/admin/check-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId: adminSessionId })
+                    });
+                    const data = await response.json();
+                    if (data.success && data.isAdmin) {
+                        document.getElementById('authOverlay').style.display = 'none';
+                        document.getElementById('setupContainer').style.display = 'block';
+                        checkQRCode();
+                    }
+                } catch (error) {
+                    console.error('Session check failed:', error);
+                }
+            }
+        }
 
         function switchTab(tab) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -702,7 +901,6 @@ app.get('/setup/:botId', async (req, res) => {
             if (tab === 'qr') {
                 document.querySelector('.tab-btn:first-child').classList.add('active');
                 document.getElementById('qr-tab').classList.add('active');
-                checkQRCode();
             } else {
                 document.querySelector('.tab-btn:last-child').classList.add('active');
                 document.getElementById('pairing-tab').classList.add('active');
@@ -720,7 +918,6 @@ app.get('/setup/:botId', async (req, res) => {
                             <img src="\${data.qrCode}" alt="QR Code">
                         </div>
                         <p style="color: #38ef7d; font-weight: bold;">✅ QR Code Ready!</p>
-                        <p style="color: #666;">Scan with WhatsApp to connect</p>
                     \`;
                 } else {
                     setTimeout(checkQRCode, 3000);
@@ -733,13 +930,8 @@ app.get('/setup/:botId', async (req, res) => {
         async function generatePairingCode() {
             const phoneNumber = document.getElementById('phoneNumber').value.trim();
             
-            if (!phoneNumber) {
-                alert('❌ Please enter your WhatsApp number');
-                return;
-            }
-
-            if (!/^[0-9]{10,15}$/.test(phoneNumber)) {
-                alert('❌ Invalid phone number!\\nUse: Country code + number\\nExample: 94768738555');
+            if (!phoneNumber || !/^[0-9]{10,15}$/.test(phoneNumber)) {
+                alert('❌ Invalid phone number!');
                 return;
             }
 
@@ -758,35 +950,28 @@ app.get('/setup/:botId', async (req, res) => {
                 const response = await fetch('/api/bots/pairing-code', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        botId: botId,
-                        phoneNumber: phoneNumber
-                    })
+                    body: JSON.stringify({ botId, phoneNumber })
                 });
 
                 const data = await response.json();
 
                 if (data.success && data.pairingCode) {
                     document.getElementById('pairing-result').innerHTML = \`
-                        <div class="alert alert-success">
-                            ✅ Pairing code generated successfully!
-                        </div>
-                        <div class="pairing-code-display">
-                            <p style="color: #666; margin-bottom: 10px;">Your Pairing Code:</p>
+                        <div class="alert alert-success">✅ Pairing code generated!</div>
+                        <div class="qr-code">
+                            <p style="color: #666;">Your Pairing Code:</p>
                             <div class="code">\${data.pairingCode}</div>
-                            <p style="color: #666;">Enter this code in WhatsApp</p>
+                            <p style="color: #666;">Enter this in WhatsApp</p>
                         </div>
                     \`;
                 } else {
                     document.getElementById('pairing-result').innerHTML = \`
-                        <div class="alert alert-warning">
-                            ⚠️ \${data.error || 'Could not generate pairing code'}
-                        </div>
+                        <div class="alert alert-error">⚠️ \${data.error || 'Failed to generate code'}</div>
                     \`;
                 }
             } catch (error) {
                 document.getElementById('pairing-result').innerHTML = \`
-                    <div class="alert alert-warning">❌ Error: \${error.message}</div>
+                    <div class="alert alert-error">❌ Error: \${error.message}</div>
                 \`;
             } finally {
                 btn.disabled = false;
@@ -794,9 +979,11 @@ app.get('/setup/:botId', async (req, res) => {
             }
         }
 
-        window.onload = function() {
-            checkQRCode();
-        };
+        window.onload = checkSession;
+
+        document.getElementById('adminPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') verifyAdmin();
+        });
     </script>
 </body>
 </html>
@@ -825,53 +1012,27 @@ app.get('/api', (req, res) => {
     name: 'Queen Selina Bot API',
     version: '4.0.0',
     developer: 'AshenEditZ',
-    contact: '+94 76 873 8555',
-    email: 'ashen.editz@gmail.com',
-    admin: {
-      email: 'ashen.editz@gmail.com',
-      password: 'ashen@123'
-    },
     endpoints: {
-      auth: {
-        register: 'POST /api/auth/register',
-        login: 'POST /api/auth/login'
-      },
-      bots: {
-        create: 'POST /api/bots/create',
-        list: 'GET /api/bots/user/:userId',
-        qr: 'GET /api/bots/qr/:botId',
-        pairing: 'POST /api/bots/pairing-code'
-      },
-      admin: {
-        users: 'POST /api/admin/users',
-        bots: 'POST /api/admin/bots',
-        broadcast: 'POST /api/admin/broadcast',
-        stats: 'POST /api/admin/stats'
-      }
+      auth: 'POST /api/auth/*',
+      bots: 'POST /api/bots/*',
+      admin: 'POST /api/admin/*'
     }
   });
 });
 
 // 404
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found'
-  });
+  res.status(404).json({ success: false, error: 'Endpoint not found' });
 });
 
 // Error handler
 app.use((error, req, res, next) => {
   console.error('Error:', error);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error'
-  });
+  res.status(500).json({ success: false, error: 'Internal server error' });
 });
 
 // Start server
 const PORT = process.env.PORT || 3000;
-
 const server = app.listen(PORT, '0.0.0.0', () => {
   const serverUrl = process.env.REPL_SLUG 
     ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
@@ -886,39 +1047,21 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 ║     Port: ${PORT}                        ║
 ║     Status: ONLINE ✅                 ║
 ║                                       ║
-║     Developer: AshenEditZ             ║
-║     Contact: +94 76 873 8555         ║
-║                                       ║
 ╚═══════════════════════════════════════╝
 
-🌐 Server URL: ${serverUrl}
-
-🔐 Admin Credentials:
-   Email: ashen.editz@gmail.com
-   Password: ashen@123
-
-✅ Backend is ready!
-📱 Users can create WhatsApp bots!
+🌐 Server: ${serverUrl}
+🔐 Admin: ashen.editz@gmail.com / ashen@123
+✅ Backend Ready!
   `);
 });
 
-// Shutdown
 const shutdown = () => {
   console.log('\n🛑 Shutting down...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
+  server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 10000);
 };
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-});
-process.on('unhandledRejection', (error) => {
-  console.error('❌ Unhandled Rejection:', error);
-});
 
 module.exports = app;
