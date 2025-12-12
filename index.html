@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👑 Queen Selina💞 - WhatsApp Bot</title>
+    <link rel="icon" href="https://i.imgur.com/rm1qWjR.jpeg" type="image/jpeg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .navbar .logo img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid white;
+        }
+
+        .navbar .links a {
+            color: white;
+            text-decoration: none;
+            margin-left: 30px;
+            font-weight: bold;
+            transition: opacity 0.3s;
+        }
+
+        .navbar .links a:hover {
+            opacity: 0.7;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 100px 20px;
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('https://i.imgur.com/rm1qWjR.jpeg') center/cover;
+            opacity: 0.05;
+            z-index: -1;
+        }
+
+        .hero h1 {
+            font-size: 5em;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+            text-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .hero p {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .hero .tagline {
+            font-size: 1.3em;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+
+        .btn {
+            padding: 20px 50px;
+            font-size: 1.3em;
+            background: white;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+
+        .btn.secondary {
+            background: transparent;
+            border: 3px solid white;
+            color: white;
+        }
+
+        .features {
+            max-width: 1200px;
+            margin: 80px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .feature-card h3 {
+            font-size: 2em;
+            margin-bottom: 15px;
+        }
+
+        .feature-card p {
+            line-height: 1.8;
+            font-size: 1.1em;
+        }
+
+        .stats {
+            text-align: center;
+            padding: 80px 20px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .stats h2 {
+            font-size: 3em;
+            margin-bottom: 50px;
+        }
+
+        .stats-grid {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+        }
+
+        .stat-item h3 {
+            font-size: 4em;
+            margin-bottom: 10px;
+            color: #38ef7d;
+        }
+
+        .stat-item p {
+            font-size: 1.3em;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 60px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            margin-top: 80px;
+        }
+
+        .footer h3 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .footer p {
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .hero h1 {
+                font-size: 3em;
+            }
+
+            .hero p {
+                font-size: 1.3em;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <img src="https://i.imgur.com/rm1qWjR.jpeg" alt="Queen Selina">
+            <span>Queen Selina💞</span>
+        </div>
+        <div class="links">
+            <a href="#features">Features</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/setup">Get Started</a>
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h1>👑 Queen Selina💞</h1>
+        <p>Advanced WhatsApp Bot Platform</p>
+        <p class="tagline">100% FREE • No API Keys • No Limits • 24/7 Online</p>
+        
+        <div class="cta-buttons">
+            <a href="/setup" class="btn">🚀 Get Started Free</a>
+            <a href="/dashboard" class="btn secondary">📊 Dashboard</a>
+        </div>
+    </div>
+
+    <div class="stats">
+        <h2>✨ Powerful Features</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <h3>100%</h3>
+                <p>FREE Forever</p>
+            </div>
+            <div class="stat-item">
+                <h3>24/7</h3>
+                <p>Always Online</p>
+            </div>
+            <div class="stat-item">
+                <h3>50+</h3>
+                <p>Commands</p>
+            </div>
+            <div class="stat-item">
+                <h3>∞</h3>
+                <p>Unlimited Usage</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="features" class="features">
+        <div class="feature-card">
+            <h3>🤖 AI Chat</h3>
+            <p>Advanced AI conversations powered by multiple free AI APIs. Chat naturally without limits!</p>
+        </div>
+
+        <div class="feature-card">
+            <h3>📥 Media Downloads</h3>
+            <p>Download from TikTok, Instagram, Facebook, Spotify and more - all in one bot!</p>
+        </div>
+
+        <div class="feature-card">
+            <h3>🔍 Google Search</h3>
+            <p>Search Google directly from WhatsApp. Get instant results without leaving chat.</p>
+        </div>
+
+        <div class="feature-card">
+            <h3>🎨 Creative Tools</h3>
+            <p>Text to image, sticker maker, and more creative features at your fingertips.</p>
+        </div>
+
+        <div class="feature-card">
+            <h3>🎬 Movies & Series</h3>
+            <p>Search and download movies from YTS and CineSubz with direct links.</p>
+        </div>
+
+        <div class="feature-card">
+            <h3>⚙️ Full Control</h3>
+            <p>Customize every aspect of your bot. Enable/disable features as you like.</p>
+        </div>
+
+        <div class="feature-card">
+            <h3>🔒 Safe & Secure</h3>
+            <p>Built with anti-ban protection. Your WhatsApp account stays safe!</p>
+        </div>
+
+        <div class="feature-card">
+            <h3>📱 Easy Setup</h3>
+            <p>Just enter your number and scan QR or use pairing code. That's it!</p>
+        </div>
+
+        <div class="feature-card">
+            <h3>🌍 Multi-Language</h3>
+            <p>Translate text instantly. Break language barriers effortlessly.</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <h3>👨‍💻 Developer Information</h3>
+        <p><strong>Developer:</strong> AshenEditZ</p>
+        <p><strong>Contact:</strong> +94 76 873 8555</p>
+        <p><strong>Email:</strong> ashen.editz@gmail.com</p>
+        <p style="margin-top: 40px; opacity: 0.7;">
+            💞 Queen Selina - Made with ❤️ in Sri Lanka 🇱🇰
+        </p>
+        <p style="margin-top: 20px; opacity: 0.5;">
+            © 2024 Queen Selina. All rights reserved.
+        </p>
+    </div>
+
+    <script>
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
