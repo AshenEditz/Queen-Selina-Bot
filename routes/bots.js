@@ -8,7 +8,7 @@ const usersDB = new Database('users.json');
 const botsDB = new Database('bots.json');
 const botManager = new BotManager();
 
-// Create new bot - NO ADMIN INFO in response
+// Create new bot
 router.post('/create', async (req, res) => {
   try {
     const { userId, phoneNumber } = req.body;
@@ -22,17 +22,11 @@ router.post('/create', async (req, res) => {
 
     const user = usersDB.findOne({ id: userId });
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'User not found' 
-      });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     if (user.totalBots >= 50) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Maximum bot limit (50) reached' 
-      });
+      return res.status(400).json({ success: false, error: 'Maximum bot limit (50) reached' });
     }
 
     const isFree = !user.freeBotUsed;
@@ -53,37 +47,26 @@ router.post('/create', async (req, res) => {
 
     usersDB.update(
       { id: userId },
-      { 
-        freeBotUsed: true,
-        totalBots: user.totalBots + 1 
-      }
+      { freeBotUsed: true, totalBots: user.totalBots + 1 }
     );
 
-    console.log(`✅ Bot created: ${phoneNumber} for user ${user.email}`);
+    console.log(`✅ Bot created: ${phoneNumber} for ${user.email}`);
 
+    // Create bot instance
     botManager.createBot(newBot.id, phoneNumber).catch(err => {
       console.error('Bot creation error:', err);
     });
 
-    // Setup URL (admin only - users won't see this)
-    const setupUrl = process.env.REPL_SLUG 
-      ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/setup/${newBot.id}`
-      : `http://localhost:${process.env.PORT || 3000}/setup/${newBot.id}`;
-
     res.json({
       success: true,
       bot: newBot,
-      setupUrl: setupUrl,
       message: isFree 
-        ? '🎉 Free bot created! Contact admin for setup access.' 
-        : 'Bot created successfully! Contact admin for setup access.'
+        ? '🎉 Free bot created! Contact admin for setup.' 
+        : 'Bot created! Contact admin for setup.'
     });
   } catch (error) {
     console.error('Create bot error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -104,7 +87,7 @@ router.get('/qr/:botId', (req, res) => {
     if (qrCode) {
       res.json({ success: true, qrCode });
     } else {
-      res.json({ success: false, error: 'QR code not ready yet' });
+      res.json({ success: false, error: 'QR not ready yet' });
     }
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -130,17 +113,22 @@ router.post('/pairing-code', async (req, res) => {
       });
     }
 
+    console.log(`🔗 Generating pairing code for bot ${botId}, number ${phoneNumber}`);
+
     const code = await botManager.getPairingCode(botId, phoneNumber);
     
     if (code) {
+      console.log(`✅ Pairing code generated: ${code}`);
       res.json({ success: true, pairingCode: code });
     } else {
+      console.log(`❌ Failed to generate pairing code`);
       res.status(400).json({ 
         success: false, 
-        error: 'Could not generate pairing code. Please wait and try again.' 
+        error: 'Could not generate pairing code. Bot may not be ready yet. Please wait 30 seconds and try again.' 
       });
     }
   } catch (error) {
+    console.error('Pairing code error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -149,7 +137,6 @@ router.post('/pairing-code', async (req, res) => {
 router.delete('/:botId', async (req, res) => {
   try {
     const bot = botsDB.findOne({ id: req.params.botId });
-    
     if (!bot) {
       return res.status(404).json({ success: false, error: 'Bot not found' });
     }
@@ -165,7 +152,7 @@ router.delete('/:botId', async (req, res) => {
       );
     }
 
-    res.json({ success: true, message: 'Bot deleted successfully' });
+    res.json({ success: true, message: 'Bot deleted' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -176,7 +163,6 @@ router.get('/status/:botId', (req, res) => {
   try {
     const status = botManager.getStatus(req.params.botId);
     const bot = botsDB.findOne({ id: req.params.botId });
-    
     res.json({ success: true, status, bot });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
