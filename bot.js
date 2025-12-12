@@ -12,7 +12,6 @@ const {
   mediaFireDownload 
 } = require('./utils/downloader');
 const axios = require('axios');
-const fs = require('fs');
 
 const botsDB = new Database('bots.json');
 const settingsDB = new Database('settings.json');
@@ -23,78 +22,166 @@ class BotManager {
   constructor() {
     this.bots = new Map();
     this.qrCodes = new Map();
+    this.pairingCodes = new Map();
+    console.log('🤖 Bot Manager initialized');
   }
 
   async createBot(botId, phoneNumber) {
-    if (this.bots.has(botId)) {
+    try {
+      if (this.bots.has(botId)) {
+        console.log(`⚠️ Bot ${botId} already exists`);
+        return false;
+      }
+
+      console.log(`🔄 Creating bot ${botId} for ${phoneNumber}...`);
+
+      const client = new Client({
+        authStrategy: new LocalAuth({ 
+          clientId: botId,
+          dataPath: './sessions'
+        }),
+        puppeteer: {
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu',
+            '--disable-web-security'
+          ]
+        }
+      });
+
+      this.setupEventHandlers(client, botId, phoneNumber);
+      
+      // Store client before initialization
+      this.bots.set(botId, { client, phoneNumber, initialized: false });
+      
+      await client.initialize();
+      
+      console.log(`✅ Bot ${botId} created successfully`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error creating bot ${botId}:`, error);
+      this.bots.delete(botId);
       return false;
     }
+  }
 
-    const client = new Client({
-      authStrategy: new LocalAuth({ clientId: botId }),
-      puppeteer: {
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-          '--disable-gpu'
-        ]
+  setupEventHandlers(client, botId, phoneNumber) {
+    // Loading screen
+    client.on('loading_screen', (percent, message) => {
+      console.log(`📱 Bot ${botId}: ${percent}% - ${message}`);
+    });
+
+    // QR Code event
+    client.on('qr', async (qr) => {
+      console.log(`📷 QR Code generated for bot ${botId}`);
+      try {
+        // Generate QR code as Data URL
+        const qrImage = await qrcode.toDataURL(qr, {
+          width: 400,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+        
+        this.qrCodes.set(botId, qrImage);
+        
+        // Update database
+        botsDB.update({ id: botId }, { 
+          qrCode: qrImage,
+          qrCodeRaw: qr,
+          status: 'pending'
+        });
+        
+        console.log(`✅ QR Code saved for bot ${botId}`);
+      } catch (error) {
+        console.error(`❌ QR Code generation error for bot ${botId}:`, error);
       }
     });
 
-    this.setupEventHandlers(client, botId);
-    await client.initialize();
-    this.bots.set(botId, { client, phoneNumber });
-    return true;
-  }
-
-  setupEventHandlers(client, botId) {
-    client.on('qr', async (qr) => {
-      console.log(`QR Code generated for bot ${botId}`);
-      const qrImage = await qrcode.toDataURL(qr);
-      this.qrCodes.set(botId, qrImage);
-      botsDB.update({ id: botId }, { qrCode: qrImage });
+    // Authenticated
+    client.on('authenticated', () => {
+      console.log(`🔐 Bot ${botId} authenticated successfully`);
+      botsDB.update({ id: botId }, { status: 'authenticated' });
     });
 
+    // Ready event
     client.on('ready', async () => {
       console.log(`✅ Bot ${botId} is ready!`);
-      botsDB.update({ id: botId }, { status: 'active' });
+      
+      // Update bot info
+      const bot = this.bots.get(botId);
+      if (bot) {
+        bot.initialized = true;
+      }
+      
+      botsDB.update({ id: botId }, { 
+        status: 'active',
+        connectedAt: new Date().toISOString()
+      });
+
+      // Clear QR code after successful connection
+      this.qrCodes.delete(botId);
 
       // Set profile picture
       try {
-        const response = await axios.get(BOT_PROFILE_PICTURE, { responseType: 'arraybuffer' });
-        const media = new MessageMedia('image/jpeg', Buffer.from(response.data).toString('base64'));
+        const response = await axios.get(BOT_PROFILE_PICTURE, { 
+          responseType: 'arraybuffer',
+          timeout: 30000 
+        });
+        const media = new MessageMedia(
+          'image/jpeg', 
+          Buffer.from(response.data).toString('base64')
+        );
         await client.setProfilePicture(media);
-        console.log('✅ Profile picture set successfully');
+        console.log(`✅ Profile picture set for bot ${botId}`);
       } catch (error) {
-        console.log('⚠️ Could not set profile picture:', error.message);
+        console.log(`⚠️ Could not set profile picture for bot ${botId}`);
       }
 
       // Auto join channel
       const settings = this.getSettings(botId);
       if (settings.autoJoinChannel) {
-        await this.autoJoinChannel(client);
+        await this.autoJoinChannel(client, botId);
       }
     });
 
-    client.on('auth_failure', () => {
-      console.log(`❌ Authentication failed for bot ${botId}`);
-      botsDB.update({ id: botId }, { status: 'failed' });
+    // Authentication failure
+    client.on('auth_failure', (msg) => {
+      console.log(`❌ Authentication failed for bot ${botId}:`, msg);
+      botsDB.update({ id: botId }, { 
+        status: 'failed',
+        error: msg 
+      });
     });
 
-    client.on('disconnected', () => {
-      console.log(`⚠️ Bot ${botId} disconnected`);
-      botsDB.update({ id: botId }, { status: 'disconnected' });
+    // Disconnected
+    client.on('disconnected', (reason) => {
+      console.log(`⚠️ Bot ${botId} disconnected:`, reason);
+      botsDB.update({ id: botId }, { 
+        status: 'disconnected',
+        disconnectedAt: new Date().toISOString()
+      });
       this.bots.delete(botId);
+      this.qrCodes.delete(botId);
+      this.pairingCodes.delete(botId);
     });
 
+    // Handle messages
     client.on('message', async (message) => {
-      await this.handleMessage(client, message, botId);
+      try {
+        await this.handleMessage(client, message, botId);
+      } catch (error) {
+        console.error(`❌ Message handling error for bot ${botId}:`, error);
+      }
     });
   }
 
@@ -115,24 +202,26 @@ class BotManager {
     return settings;
   }
 
-  async autoJoinChannel(client) {
+  async autoJoinChannel(client, botId) {
     try {
-      const channelId = '0029VavLxme5PO0yDv3eUa47';
-      console.log(`Attempting to join channel: ${channelId}`);
+      const channelId = '0029VavLxme5PO0yDv3eUa47@newsletter';
+      console.log(`📢 Attempting to join channel for bot ${botId}`);
     } catch (error) {
-      console.error('Error joining channel:', error);
+      console.error(`❌ Error joining channel for bot ${botId}:`, error);
     }
   }
 
   async reactToMessage(message, botId) {
     try {
       const settings = this.getSettings(botId);
+      
       if (!settings.autoReact && !settings.reactToCommands) {
         return;
       }
 
       const reactions = settings.reactions || ['❤️', '💞', '😊', '🔥', '👍', '⭐'];
       const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
+      
       await message.react(randomReaction);
     } catch (error) {
       // Silently fail
@@ -155,8 +244,10 @@ class BotManager {
       await this.reactToMessage(message, botId);
     }
 
+    if (!isCommand) return;
+
     try {
-      // Help & Menu
+      // Command handlers (same as before)
       if (lowerBody === '.menu' || lowerBody === '.help') {
         await this.sendMenu(chat);
       }
@@ -169,8 +260,6 @@ class BotManager {
       else if (lowerBody === '.owner' || lowerBody === '.dev') {
         await this.handleOwner(chat);
       }
-
-      // Search & AI
       else if (lowerBody.startsWith('.google ')) {
         const query = body.substring(8);
         await this.handleGoogleSearch(chat, query);
@@ -179,8 +268,6 @@ class BotManager {
         const prompt = body.substring(lowerBody.startsWith('.ai ') ? 4 : 5);
         await this.handleAIChat(chat, prompt);
       }
-
-      // Media Creation
       else if (lowerBody.startsWith('.c2i ')) {
         const text = body.substring(5);
         await this.handleTextToImage(chat, text);
@@ -188,8 +275,6 @@ class BotManager {
       else if (lowerBody.startsWith('.sticker') || lowerBody.startsWith('.s ')) {
         await this.handleSticker(message, chat);
       }
-
-      // Downloaders
       else if (lowerBody.startsWith('.tiktok ') || lowerBody.startsWith('.tt ')) {
         const url = body.split(' ')[1];
         await this.handleTikTokDownload(chat, url);
@@ -202,20 +287,6 @@ class BotManager {
         const url = body.split(' ')[1];
         await this.handleFacebookDownload(chat, url);
       }
-      else if (lowerBody.startsWith('.spotify ') || lowerBody.startsWith('.sp ')) {
-        const url = body.split(' ')[1];
-        await this.handleSpotifyDownload(chat, url);
-      }
-      else if (lowerBody.startsWith('.apk ')) {
-        const appName = body.substring(5);
-        await this.handleApkDownload(chat, appName);
-      }
-      else if (lowerBody.startsWith('.mediafire ') || lowerBody.startsWith('.mf ')) {
-        const url = body.split(' ')[1];
-        await this.handleMediaFireDownload(chat, url);
-      }
-
-      // Movies
       else if (lowerBody.startsWith('.yts ')) {
         const query = body.substring(5);
         await this.handleYTSSearch(chat, query);
@@ -224,12 +295,6 @@ class BotManager {
         const url = body.substring(7);
         await this.handleMovieInfo(chat, url);
       }
-      else if (lowerBody.startsWith('.download ')) {
-        const url = body.substring(10);
-        await this.handleMovieDownload(chat, url);
-      }
-
-      // Fun & Utility
       else if (lowerBody.startsWith('.weather ')) {
         const city = body.substring(9);
         await this.handleWeather(chat, city);
@@ -240,13 +305,9 @@ class BotManager {
       else if (lowerBody === '.quote') {
         await this.handleQuote(chat);
       }
-      else if (lowerBody.startsWith('.translate ')) {
-        const text = body.substring(11);
-        await this.handleTranslate(chat, text);
-      }
 
     } catch (error) {
-      console.error('Message handling error:', error);
+      console.error(`❌ Command error for bot ${botId}:`, error);
       await chat.sendMessage('❌ An error occurred. Please try again later.');
     }
   }
@@ -258,51 +319,32 @@ class BotManager {
 ╚════════════════════════════╝
 
 *🔍 SEARCH & AI*
-━━━━━━━━━━━━━━━━━━━━━━
 .google <query> - Google search
 .ai <message> - Chat with AI
-.gpt <message> - GPT chat
 
 *📥 DOWNLOADERS*
-━━━━━━━━━━━━━━━━━━━━━━
 .tiktok <url> - TikTok video
-.instagram <url> - Instagram media
-.facebook <url> - Facebook video
-.spotify <url> - Spotify track
-.apk <name> - Download APK
-.mediafire <url> - MediaFire file
+.instagram <url> - Instagram
+.facebook <url> - Facebook
 
 *🎨 MEDIA & FUN*
-━━━━━━━━━━━━━━━━━━━━━━
 .c2i <text> - Text to Image
-.sticker - Convert to sticker
-.weather <city> - Weather info
+.sticker - Make sticker
+.weather <city> - Weather
 .joke - Random joke
-.quote - Inspirational quote
-.translate <text> - Translate
+.quote - Inspiration
 
 *🎬 MOVIES*
-━━━━━━━━━━━━━━━━━━━━━━
 .yts <query> - Search movies
 .movie <url> - Movie details
-.download <url> - Download links
 
-*ℹ️ INFO & SETTINGS*
-━━━━━━━━━━━━━━━━━━━━━━
-.menu - Show this menu
+*ℹ️ INFO*
+.menu - This menu
 .settings - Bot settings
 .alive - Check status
 .owner - Developer info
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-✨ *QUEEN SELINA BOT* ✨
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💞 _Advanced WhatsApp Bot_
-🔒 _Safe Mode Enabled_
-⚡ _Online 24/7_
-
-_Type .help for command list_
+💞 _Queen Selina - Your WhatsApp Bot_
     `;
     await chat.sendMessage(menu);
   }
@@ -315,13 +357,9 @@ _Type .help for command list_
 *Auto React:* ${settings.autoReact ? '✅ ON' : '❌ OFF'}
 *React to Commands:* ${settings.reactToCommands ? '✅ ON' : '❌ OFF'}
 *Auto Join Channel:* ${settings.autoJoinChannel ? '✅ ON' : '❌ OFF'}
-*Welcome Message:* ${settings.welcomeMessage ? '✅ ON' : '❌ OFF'}
-*Anti-Spam:* ${settings.antiSpam ? '✅ ON' : '❌ OFF'}
 
-💡 *Change settings:*
-Visit your bot dashboard to customize.
-
-⚠️ *Note:* Auto-react disabled by default to prevent bans.
+💡 Change settings on dashboard
+⚠️ Auto-react off by default (ban protection)
     `;
     await chat.sendMessage(settingsText);
   }
@@ -330,37 +368,31 @@ Visit your bot dashboard to customize.
     const uptime = process.uptime();
     const hours = Math.floor(uptime / 3600);
     const minutes = Math.floor((uptime % 3600) / 60);
-    const seconds = Math.floor(uptime % 60);
     
-    const aliveMsg = `
+    await chat.sendMessage(`
 👑 *QUEEN SELINA* 💞
 
 ✅ *Status:* Online
-⏱️ *Uptime:* ${hours}h ${minutes}m ${seconds}s
+⏱️ *Uptime:* ${hours}h ${minutes}m
 🤖 *Version:* 4.0.0
 ⚡ *Speed:* Fast
 
 _Bot is running perfectly!_
-    `;
-    await chat.sendMessage(aliveMsg);
+    `);
   }
 
   async handleOwner(chat) {
-    const ownerMsg = `
-👨‍💻 *DEVELOPER INFORMATION*
+    await chat.sendMessage(`
+👨‍💻 *DEVELOPER INFO*
 
 *Name:* AshenEditZ
-*Contact:* +94 726962984
+*Contact:* +94 76 873 8555
 *Email:* ashen.editz@gmail.com
 
 *Bot:* Queen Selina 💞
 *Version:* 4.0.0
 *Made in:* Sri Lanka 🇱🇰
-
-━━━━━━━━━━━━━━━━━━━━━━
-_Thank you for using Queen Selina!_
-    `;
-    await chat.sendMessage(ownerMsg);
+    `);
   }
 
   async handleGoogleSearch(chat, query) {
@@ -368,13 +400,9 @@ _Thank you for using Queen Selina!_
     try {
       const results = await googleSearch(query);
       let resultText = `🔍 *Google Search*\n\n*Query:* ${query}\n\n`;
-      
       results.forEach((result, index) => {
-        resultText += `${index + 1}. *${result.title}*\n`;
-        if (result.link) resultText += `🔗 ${result.link}\n`;
-        if (result.description) resultText += `📝 ${result.description}\n\n`;
+        resultText += `${index + 1}. *${result.title}*\n${result.link}\n\n`;
       });
-
       await chat.sendMessage(resultText);
     } catch (error) {
       await chat.sendMessage('❌ Error performing search.');
@@ -385,7 +413,7 @@ _Thank you for using Queen Selina!_
     await chat.sendStateTyping();
     try {
       const response = await chatAI(prompt);
-      await chat.sendMessage(`🤖 *Queen Selina AI:*\n\n${response}`);
+      await chat.sendMessage(`🤖 *AI:*\n\n${response}`);
     } catch (error) {
       await chat.sendMessage('❌ Error connecting to AI.');
     }
@@ -400,13 +428,8 @@ _Thank you for using Queen Selina!_
         responseType: 'arraybuffer',
         timeout: 30000
       });
-
-      const media = new MessageMedia(
-        'image/png',
-        Buffer.from(response.data).toString('base64'),
-        'text-image.png'
-      );
-      await chat.sendMessage(media, { caption: `📝 *${text}*` });
+      const media = new MessageMedia('image/png', Buffer.from(response.data).toString('base64'));
+      await chat.sendMessage(media, { caption: `📝 ${text}` });
     } catch (error) {
       await chat.sendMessage('❌ Error generating image.');
     }
@@ -418,14 +441,8 @@ _Thank you for using Queen Selina!_
       if (message.hasMedia) {
         const media = await message.downloadMedia();
         await chat.sendMessage(media, { sendMediaAsSticker: true });
-      } else if (message.hasQuotedMsg) {
-        const quotedMsg = await message.getQuotedMessage();
-        if (quotedMsg.hasMedia) {
-          const media = await quotedMsg.downloadMedia();
-          await chat.sendMessage(media, { sendMediaAsSticker: true });
-        }
       } else {
-        await chat.sendMessage('❌ Please reply to an image or send an image with .sticker');
+        await chat.sendMessage('❌ Reply to an image with .sticker');
       }
     } catch (error) {
       await chat.sendMessage('❌ Error creating sticker.');
@@ -437,16 +454,15 @@ _Thank you for using Queen Selina!_
     try {
       const result = await tiktokDownload(url);
       if (result.success) {
+        await chat.sendMessage(`🎵 Downloading...`);
         const response = await axios.get(result.video, { responseType: 'arraybuffer', timeout: 60000 });
         const media = new MessageMedia('video/mp4', Buffer.from(response.data).toString('base64'));
-        await chat.sendMessage(media, { 
-          caption: `🎵 *TikTok Download*\n\n*Title:* ${result.title}\n*Author:* @${result.author}` 
-        });
+        await chat.sendMessage(media);
       } else {
         await chat.sendMessage('❌ ' + result.error);
       }
     } catch (error) {
-      await chat.sendMessage('❌ Error downloading TikTok video.');
+      await chat.sendMessage('❌ Download failed.');
     }
   }
 
@@ -455,14 +471,15 @@ _Thank you for using Queen Selina!_
     try {
       const result = await instagramDownload(url);
       if (result.success) {
+        await chat.sendMessage(`📸 Downloading...`);
         const response = await axios.get(result.url, { responseType: 'arraybuffer', timeout: 60000 });
         const media = new MessageMedia('video/mp4', Buffer.from(response.data).toString('base64'));
-        await chat.sendMessage(media, { caption: `📸 *Instagram Download*\n\n${result.title || ''}` });
+        await chat.sendMessage(media);
       } else {
         await chat.sendMessage('❌ ' + result.error);
       }
     } catch (error) {
-      await chat.sendMessage('❌ Error downloading Instagram content.');
+      await chat.sendMessage('❌ Download failed.');
     }
   }
 
@@ -471,54 +488,12 @@ _Thank you for using Queen Selina!_
     try {
       const result = await facebookDownload(url);
       if (result.success) {
-        await chat.sendMessage(`📘 *Facebook Download*\n\n*Title:* ${result.title}\n\n*HD:* ${result.video_hd}\n*SD:* ${result.video_sd}`);
+        await chat.sendMessage(`📘 *Links:*\n\n*HD:* ${result.video_hd}\n*SD:* ${result.video_sd}`);
       } else {
         await chat.sendMessage('❌ ' + result.error);
       }
     } catch (error) {
-      await chat.sendMessage('❌ Error downloading Facebook video.');
-    }
-  }
-
-  async handleSpotifyDownload(chat, url) {
-    await chat.sendStateTyping();
-    try {
-      const result = await spotifyDownload(url);
-      if (result.success) {
-        await chat.sendMessage(`🎵 *Spotify Download*\n\n*Title:* ${result.title}\n*Artist:* ${result.artist}\n\n*Download:* ${result.download}`);
-      } else {
-        await chat.sendMessage('❌ ' + result.error);
-      }
-    } catch (error) {
-      await chat.sendMessage('❌ Error downloading Spotify track.');
-    }
-  }
-
-  async handleApkDownload(chat, appName) {
-    await chat.sendStateTyping();
-    try {
-      const result = await apkDownload(appName);
-      if (result.success) {
-        await chat.sendMessage(`📱 *APK Download*\n\n*App:* ${result.name}\n*Link:* ${result.url}\n\n_Visit the link to download_`);
-      } else {
-        await chat.sendMessage('❌ ' + result.error);
-      }
-    } catch (error) {
-      await chat.sendMessage('❌ Error searching APK.');
-    }
-  }
-
-  async handleMediaFireDownload(chat, url) {
-    await chat.sendStateTyping();
-    try {
-      const result = await mediaFireDownload(url);
-      if (result.success) {
-        await chat.sendMessage(`📁 *MediaFire Download*\n\n*File:* ${result.filename}\n*Size:* ${result.size}\n*Link:* ${result.download}`);
-      } else {
-        await chat.sendMessage('❌ ' + result.error);
-      }
-    } catch (error) {
-      await chat.sendMessage('❌ Error getting MediaFire link.');
+      await chat.sendMessage('❌ Download failed.');
     }
   }
 
@@ -530,21 +505,17 @@ _Thank you for using Queen Selina!_
         params: { 'q': query },
         timeout: 15000
       });
-
-      let resultText = `🎬 *YTS Search*\n\n*Query:* ${query}\n\n`;
-      
+      let resultText = `🎬 *YTS Search*\n\n`;
       if (response.data && response.data.data) {
         response.data.data.slice(0, 5).forEach((movie, index) => {
-          resultText += `${index + 1}. *${movie.title}* (${movie.year})\n`;
-          resultText += `⭐ ${movie.rating}/10\n`;
-          resultText += `🔗 ${movie.url}\n\n`;
+          resultText += `${index + 1}. *${movie.title}* (${movie.year})\n⭐ ${movie.rating}/10\n${movie.url}\n\n`;
         });
       } else {
         resultText = '❌ No results found.';
       }
       await chat.sendMessage(resultText);
     } catch (error) {
-      await chat.sendMessage('❌ Error searching YTS.');
+      await chat.sendMessage('❌ Search failed.');
     }
   }
 
@@ -556,65 +527,21 @@ _Thank you for using Queen Selina!_
         params: { 'url': url },
         timeout: 15000
       });
-
       const movie = response.data;
-      let infoText = `🎬 *Movie Info*\n\n`;
-      infoText += `*Title:* ${movie.title || 'N/A'}\n`;
-      infoText += `*Year:* ${movie.year || 'N/A'}\n`;
-      infoText += `*Genre:* ${movie.genre || 'N/A'}\n`;
-      infoText += `*Rating:* ${movie.rating || 'N/A'}\n`;
-      infoText += `*Description:* ${movie.description || 'N/A'}\n`;
-      await chat.sendMessage(infoText);
+      await chat.sendMessage(`🎬 *${movie.title || 'Movie'}*\n\n*Year:* ${movie.year || 'N/A'}\n*Genre:* ${movie.genre || 'N/A'}\n*Rating:* ${movie.rating || 'N/A'}`);
     } catch (error) {
-      await chat.sendMessage('❌ Error fetching movie info.');
-    }
-  }
-
-  async handleMovieDownload(chat, url) {
-    await chat.sendStateTyping();
-    try {
-      const response = await axios.get('https://api.infinityapi.org/cine-direct-dl', {
-        headers: { 'Authorization': 'Bearer Infinity-manoj-x-mizta' },
-        params: { 'url': url },
-        timeout: 15000
-      });
-
-      let downloadText = `📥 *Download Links*\n\n`;
-      
-      if (response.data && response.data.links) {
-        response.data.links.forEach((link, index) => {
-          downloadText += `${index + 1}. *${link.quality}* - ${link.size}\n`;
-          downloadText += `🔗 ${link.url}\n\n`;
-        });
-      } else {
-        downloadText = '❌ No download links found.';
-      }
-      await chat.sendMessage(downloadText);
-    } catch (error) {
-      await chat.sendMessage('❌ Error fetching download links.');
+      await chat.sendMessage('❌ Fetch failed.');
     }
   }
 
   async handleWeather(chat, city) {
     await chat.sendStateTyping();
     try {
-      const response = await axios.get(`https://wttr.in/${encodeURIComponent(city)}?format=j1`);
-      const data = response.data;
-      const current = data.current_condition[0];
-      
-      const weatherText = `
-🌤️ *Weather Report*
-
-*Location:* ${city}
-*Temperature:* ${current.temp_C}°C / ${current.temp_F}°F
-*Feels Like:* ${current.FeelsLikeC}°C
-*Condition:* ${current.weatherDesc[0].value}
-*Humidity:* ${current.humidity}%
-*Wind Speed:* ${current.windspeedKmph} km/h
-      `;
-      await chat.sendMessage(weatherText);
+      const response = await axios.get(`https://wttr.in/${encodeURIComponent(city)}?format=j1`, { timeout: 10000 });
+      const current = response.data.current_condition[0];
+      await chat.sendMessage(`🌤️ *${city}*\n\n*Temp:* ${current.temp_C}°C\n*Feels:* ${current.FeelsLikeC}°C\n*Humidity:* ${current.humidity}%`);
     } catch (error) {
-      await chat.sendMessage('❌ Error fetching weather data.');
+      await chat.sendMessage('❌ Weather fetch failed.');
     }
   }
 
@@ -622,10 +549,9 @@ _Thank you for using Queen Selina!_
     await chat.sendStateTyping();
     try {
       const response = await axios.get('https://official-joke-api.appspot.com/random_joke');
-      const joke = response.data;
-      await chat.sendMessage(`😂 *Random Joke*\n\n${joke.setup}\n\n${joke.punchline}`);
+      await chat.sendMessage(`😂 ${response.data.setup}\n\n${response.data.punchline}`);
     } catch (error) {
-      await chat.sendMessage('❌ Error fetching joke.');
+      await chat.sendMessage('❌ Joke fetch failed.');
     }
   }
 
@@ -633,36 +559,28 @@ _Thank you for using Queen Selina!_
     await chat.sendStateTyping();
     try {
       const response = await axios.get('https://api.quotable.io/random');
-      const quote = response.data;
-      await chat.sendMessage(`💭 *Inspirational Quote*\n\n"${quote.content}"\n\n- ${quote.author}`);
+      await chat.sendMessage(`💭 "${response.data.content}"\n\n- ${response.data.author}`);
     } catch (error) {
-      await chat.sendMessage('❌ Error fetching quote.');
-    }
-  }
-
-  async handleTranslate(chat, text) {
-    await chat.sendStateTyping();
-    try {
-      const response = await axios.get(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`);
-      const translated = response.data[0][0][0];
-      await chat.sendMessage(`🌐 *Translation*\n\n*Original:* ${text}\n*Translated:* ${translated}`);
-    } catch (error) {
-      await chat.sendMessage('❌ Error translating text.');
+      await chat.sendMessage('❌ Quote fetch failed.');
     }
   }
 
   async sendBroadcast(botId, message) {
     const bot = this.bots.get(botId);
-    if (!bot) return false;
+    if (!bot || !bot.initialized) return 0;
 
     try {
       const chats = await bot.client.getChats();
       let sent = 0;
       for (const chat of chats) {
         if (!chat.isGroup) {
-          await chat.sendMessage(`📢 *BROADCAST*\n\n${message}\n\n_From Queen Selina Team_`);
-          sent++;
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          try {
+            await chat.sendMessage(`📢 *BROADCAST*\n\n${message}\n\n_From Queen Selina_`);
+            sent++;
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          } catch (error) {
+            console.error(`Error sending to chat:`, error);
+          }
         }
       }
       return sent;
@@ -678,20 +596,40 @@ _Thank you for using Queen Selina!_
 
   async getPairingCode(botId, phoneNumber) {
     const bot = this.bots.get(botId);
-    if (!bot) return null;
+    if (!bot || !bot.client) {
+      console.log(`❌ Bot ${botId} not found or client not initialized`);
+      return null;
+    }
 
     try {
+      console.log(`🔗 Generating pairing code for ${phoneNumber}...`);
+      
+      // Request pairing code
       const code = await bot.client.requestPairingCode(phoneNumber);
-      botsDB.update({ id: botId }, { pairingCode: code });
+      
+      console.log(`✅ Pairing code generated: ${code}`);
+      
+      // Store pairing code
+      this.pairingCodes.set(botId, code);
+      
+      // Update database
+      botsDB.update({ id: botId }, { 
+        pairingCode: code,
+        pairingPhoneNumber: phoneNumber,
+        pairingGeneratedAt: new Date().toISOString()
+      });
+      
       return code;
     } catch (error) {
-      console.error('Pairing code error:', error);
+      console.error(`❌ Pairing code error for bot ${botId}:`, error);
       return null;
     }
   }
 
   getStatus(botId) {
-    return this.bots.has(botId) ? 'active' : 'inactive';
+    const bot = this.bots.get(botId);
+    if (!bot) return 'inactive';
+    return bot.initialized ? 'active' : 'initializing';
   }
 
   async stopBot(botId) {
@@ -699,9 +637,12 @@ _Thank you for using Queen Selina!_
     if (!bot) return false;
 
     try {
-      await bot.client.destroy();
+      if (bot.client) {
+        await bot.client.destroy();
+      }
       this.bots.delete(botId);
       this.qrCodes.delete(botId);
+      this.pairingCodes.delete(botId);
       return true;
     } catch (error) {
       console.error('Stop bot error:', error);
@@ -711,6 +652,7 @@ _Thank you for using Queen Selina!_
 }
 
 let instance = null;
+
 module.exports = class {
   constructor() {
     if (!instance) {
